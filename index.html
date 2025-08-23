@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoCreator – Multi-Agent Studio</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <h2>Search History</h2>
+
+        <div class="controls">
+          <button onclick="exportContent()" title="Export Current Content">
+            📄 Export
+          </button>
+          <button onclick="clearAllHistory()" title="Clear All History">
+            🗑️ Clear All
+          </button>
+          <button onclick="toggleMetrics()" title="Show Performance">
+            📊 Metrics
+          </button>
+        </div>
+
+        <div class="search-history">
+          <input
+            type="text"
+            id="historySearch"
+            placeholder="Search history..."
+          />
+        </div>
+
+        <ul id="historyList">
+          <!-- History items will be populated here -->
+          <template id="historyItemTemplate">
+            <li class="history-item">
+              <div class="timestamp"></div>
+              <span class="topic-text"></span>
+              <button class="remove-btn" title="Remove this topic">✖</button>
+            </li>
+          </template>
+        </ul>
+      </aside>
+
+      <div class="container">
+        <header>
+          <h1>AutoCreator</h1>
+          <p>Multi-Agent AI Content Studio</p>
+          <button
+            class="theme-toggle"
+            onclick="toggleTheme()"
+            title="Toggle Theme"
+          >
+            🌙
+          </button>
+        </header>
+
+        <main>
+          <div class="chat-box">
+            <div class="template-selector">
+              <select id="templateSelect">
+                <option value="general">General Content</option>
+                <option value="blog-post">Blog Post</option>
+                <option value="social-media">Social Media</option>
+                <option value="newsletter">Newsletter</option>
+                <option value="technical">Technical Documentation</option>
+              </select>
+            </div>
+
+            <div class="chat-input">
+              <textarea
+                id="topicInput"
+                placeholder="Enter a topic (Ctrl+Enter to generate)..."
+              ></textarea>
+              <button id="generateBtn">➤</button>
+            </div>
+
+            <div class="navigation-controls hidden" id="navControls">
+              <button id="prevBtn">⬅️ Previous</button>
+              <span id="navCounter"></span>
+              <button id="nextBtn">Next ➡️</button>
+            </div>
+
+            <div class="agent-message" id="status">Awaiting your topic...</div>
+
+            <div class="agent-message bot" id="textOutput"></div>
+            <div class="agent-message bot" id="writerOutput"></div>
+            <div class="agent-message bot" id="researchOutput"></div>
+
+            <div class="performance-metrics" id="performanceMetrics">
+              <h4>🎯 Agent Performance</h4>
+              <div id="metricsContent"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="shortcuts-info">
+      Ctrl+Enter: Generate | Ctrl+S: Export | Ctrl+D: Toggle Theme
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
