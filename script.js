@@ -1,5 +1,4 @@
-// A slightly simplified API key declaration for demonstration.
-// const OPENROUTER_API_KEY = "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";
+ const OPENROUTER_API_KEY = "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";
 
 const config = {
   apiKey: localStorage.getItem("openrouter_api_key") || null,
