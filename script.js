@@ -1,12 +1,11 @@
 /*
   AutoCreator Multi-Agent Studio - Rebuilt JS
   -------------------------------------------------
-  For quick testing only:
-  Paste your OpenRouter API key below.
-  Do not use this method for a live/public website.
+  IMPORTANT:
+  - Do NOT hardcode your real OpenRouter API key in frontend code.
+  - For learning/testing, this script can read the key from localStorage.
+  - For production, call your own backend instead of OpenRouter directly.
 */
-
-const DEV_OPENROUTER_API_KEY = "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";
 
 const config = {
   apiKeyStorageKey: "openrouter_api_key",
@@ -146,12 +145,6 @@ function clearMainView() {
 }
 
 function getApiKey() {
-  const devKey = DEV_OPENROUTER_API_KEY.trim();
-
-  if (devKey && devKey !== "PASTE_YOUR_OPENROUTER_API_KEY_HERE") {
-    return devKey;
-  }
-
   const savedKey = localStorage.getItem(config.apiKeyStorageKey);
 
   if (savedKey && savedKey.trim().startsWith("sk-or-v1-")) {
