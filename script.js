@@ -1,4 +1,12 @@
+/*
+  AutoCreator Multi-Agent Studio - Rebuilt JS
+  -------------------------------------------------
+  For quick testing only:
+  Paste your OpenRouter API key below.
+  Do not use this method for a live/public website.
+*/
 
+const DEV_OPENROUTER_API_KEY = "PASTE_YOUR_OPENROUTER_API_KEY_HERE";
 
 const config = {
   apiKeyStorageKey: "openrouter_api_key",
@@ -138,13 +146,19 @@ function clearMainView() {
 }
 
 function getApiKey() {
+  const devKey = DEV_OPENROUTER_API_KEY.trim();
+
+  if (devKey && devKey !== "PASTE_YOUR_OPENROUTER_API_KEY_HERE") {
+    return devKey;
+  }
+
   const savedKey = localStorage.getItem(config.apiKeyStorageKey);
 
   if (savedKey && savedKey.trim().startsWith("sk-or-v1-")) {
     return savedKey.trim();
   }
 
-  const enteredKey = Prompt("API KEY IS NEEDED")
+  const enteredKey = prompt("Please enter your OpenRouter API key:");
 
   if (!enteredKey || !enteredKey.trim()) {
     alert("API key is required to use AutoCreator.");
