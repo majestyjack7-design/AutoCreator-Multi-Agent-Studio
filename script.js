@@ -144,7 +144,7 @@ function getApiKey() {
     return savedKey.trim();
   }
 
-  const enteredKey = prompt("API KEY IS NEEDED")
+  const enteredKey = Prompt("API KEY IS NEEDED")
 
   if (!enteredKey || !enteredKey.trim()) {
     alert("API key is required to use AutoCreator.");
