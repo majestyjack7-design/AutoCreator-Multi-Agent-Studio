@@ -1,9 +1,20 @@
- const OPENROUTER_API_KEY = "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";
+/*
+  AutoCreator Multi-Agent Studio - Rebuilt JS
+  -------------------------------------------------
+  IMPORTANT:
+  - Do NOT hardcode your real OpenRouter API key in frontend code.
+  - For learning/testing, this script can read the key from localStorage.
+  - For production, call your own backend instead of OpenRouter directly.
+*/
 
 const config = {
-  apiKey: localStorage.getItem("openrouter_api_key") || null,
+  apiKeyStorageKey: "openrouter_api_key",
+  historyStorageKey: "history",
+  metricsStorageKey: "autocreator_metrics",
+  themeStorageKey: "theme",
   maxRetries: 3,
   retryDelay: 1000,
+  model: "openai/gpt-4o-mini",
 };
 
 const state = {
@@ -19,289 +30,154 @@ const state = {
   },
 };
 
-// DOM elements
-const btn = document.querySelector("#generateBtn");
-const inputTopic = document.querySelector("#topicInput");
-const statusBar = document.querySelector("#status");
-const textOutput = document.querySelector("#textOutput");
-const writerOutput = document.querySelector("#writerOutput");
-const researchOutput = document.querySelector("#researchOutput");
-const templateSelect = document.querySelector("#templateSelect");
-const historySearch = document.querySelector("#historySearch");
-const navControls = document.querySelector("#navControls");
-const prevBtn = document.querySelector("#prevBtn");
-const nextBtn = document.querySelector("#nextBtn");
-const navCounter = document.querySelector("#navCounter");
+const elements = {
+  btn: document.querySelector("#generateBtn"),
+  inputTopic: document.querySelector("#topicInput"),
+  statusBar: document.querySelector("#status"),
+  textOutput: document.querySelector("#textOutput"),
+  writerOutput: document.querySelector("#writerOutput"),
+  researchOutput: document.querySelector("#researchOutput"),
+  templateSelect: document.querySelector("#templateSelect"),
+  historySearch: document.querySelector("#historySearch"),
+  navControls: document.querySelector("#navControls"),
+  prevBtn: document.querySelector("#prevBtn"),
+  nextBtn: document.querySelector("#nextBtn"),
+  navCounter: document.querySelector("#navCounter"),
+  historyList: document.querySelector("#historyList"),
+  historyItemTemplate: document.querySelector("#historyItemTemplate"),
+  metricsPanel: document.querySelector("#performanceMetrics"),
+  metricsContent: document.querySelector("#metricsContent"),
+  themeToggle: document.querySelector(".theme-toggle"),
+};
 
-// Enhanced agent prompts with templates (no change)
 const agentPrompts = {
   general: {
     summary: (topic) =>
       `Create a concise, informative 2-sentence summary of "${topic}". Focus on the most important aspects and current relevance.`,
     writer: (topic) =>
-      `Act as a professional content writer. Create an engaging 200-word article about "${topic}". The article must be well-structured. Include a compelling hook, 2-3 key points in separate paragraphs, and a strong conclusion. Use active voice and storytelling elements. Separate all paragraphs with a double line break.`,
+      `Act as a professional content writer. Create an engaging 200-word article about "${topic}". Include a compelling hook, 2-3 key points in separate paragraphs, and a strong conclusion. Use active voice. Separate paragraphs with a double line break.`,
     research: (topic) =>
-      `Act as a research analyst. Provide exactly 3 current, data-backed insights about "${topic}". Include specific statistics, recent trends, and credible context. Format as numbered points with actionable information.`,
+      `Act as a research analyst. Provide exactly 3 current, data-backed insights about "${topic}". Format as numbered points.`,
   },
   "blog-post": {
     summary: (topic) =>
-      `Create an SEO-friendly meta description (2 sentences) for a blog post about "${topic}".`,
+      `Create an SEO-friendly meta description, 2 sentences, for a blog post about "${topic}".`,
     writer: (topic) =>
-      `Write a comprehensive 300-word blog post about "${topic}". The post must be well-structured with a compelling headline, an introduction with a hook, 3 main sections with clear subheadings (e.g., "### My Subheading"), and a call-to-action conclusion. Ensure paragraphs are well-separated by double line breaks.`,
+      `Write a 300-word blog post about "${topic}". Include a headline, introduction, 3 clear subheadings, and a call-to-action conclusion.`,
     research: (topic) =>
-      `Provide 3 key statistics and recent research findings about "${topic}" that would strengthen a blog post. Include sources and publication dates where possible.`,
+      `Provide 3 key statistics or research findings about "${topic}" that would strengthen a blog post.`,
   },
   "social-media": {
     summary: (topic) =>
-      `Create a punchy 1-sentence social media hook about "${topic}" that would make people stop scrolling.`,
+      `Create a punchy 1-sentence social media hook about "${topic}".`,
     writer: (topic) =>
-      `Create 3 social media posts about "${topic}". Use the following format with clear labels:\n\n**LinkedIn Post:**\n(A 150-word professional post)\n\n**Twitter Thread Starter:**\n(A 280-character engaging hook)\n\n**Instagram Caption:**\n(A 100-word caption with relevant hashtags at the end)`,
+      `Create 3 social media posts about "${topic}". Include LinkedIn, Twitter/X, and Instagram versions with clear labels.`,
     research: (topic) =>
-      `Find 3 trending hashtags, recent news, or viral content related to "${topic}" that could boost social media engagement.`,
+      `Provide 3 trending hashtags, recent angles, or viral content ideas related to "${topic}".`,
   },
   newsletter: {
     summary: (topic) =>
-      `Write a compelling newsletter subject line and preview text about "${topic}" that maximizes open rates.`,
+      `Write a compelling newsletter subject line and preview text about "${topic}".`,
     writer: (topic) =>
-      `Create a newsletter section about "${topic}". Structure it precisely as follows, using clear labels and line breaks:\n\n**Subject:**\n(An attention-grabbing subject line)\n\n**Body:**\n(A personal introduction, followed by the main content of about 200 words, broken into short, easy-to-read paragraphs)\n\n**Call to Action:**\n(A clear call-to-action with a sense of urgency)`,
+      `Create a newsletter section about "${topic}" with Subject, Body, and Call to Action sections.`,
     research: (topic) =>
-      `Provide 3 timely insights or trends about "${topic}" that newsletter subscribers would find valuable and actionable.`,
+      `Provide 3 timely insights or trends about "${topic}" that newsletter subscribers would find useful.`,
   },
   technical: {
     summary: (topic) =>
-      `Create a technical overview (2 sentences) of "${topic}" suitable for documentation or API reference.`,
+      `Create a technical overview, 2 sentences, of "${topic}" suitable for documentation.`,
     writer: (topic) =>
-      `Write technical documentation for developers about "${topic}". Structure the document with the following sections, using clear headings for each:\n\n- **Overview:**\n- **Key Concepts:** (Use a bulleted list with '-' for each item)\n- **Implementation Steps:** (Use a numbered list)\n- **Best Practices:** (Use a bulleted list with '-' for each item)\n\nUse clear, precise language.`,
+      `Write technical documentation for developers about "${topic}". Include Overview, Key Concepts, Implementation Steps, and Best Practices.`,
     research: (topic) =>
-      `Provide 3 technical considerations, performance metrics, or industry standards related to "${topic}" with specific examples.`,
+      `Provide 3 technical considerations, performance metrics, or industry standards related to "${topic}".`,
   },
 };
 
-// Function to create smart history titles (no change)
-function createSmartHistoryTitle(topic) {
-  if (topic.length <= 40) return topic;
-  const words = topic.split(" ");
-  if (topic.includes("?")) {
-    const questionWords = words.slice(0, 8).join(" ");
-    return questionWords.length < topic.length
-      ? questionWords + "..."
-      : questionWords;
+function getFromStorage(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
   }
-  const commonStarters = [
-    "how to",
-    "what is",
-    "why does",
-    "when should",
-    "where can",
-    "who is",
-  ];
-  const lowerTopic = topic.toLowerCase();
-  for (let starter of commonStarters) {
-    if (lowerTopic.startsWith(starter)) {
-      const relevantPart = words.slice(0, 6).join(" ");
-      return relevantPart.length < topic.length
-        ? relevantPart + "..."
-        : relevantPart;
-    }
-  }
-  let smartTitle = "";
-  let wordCount = 0;
-  for (let word of words) {
-    if (smartTitle.length + word.length > 35) break;
-    smartTitle += (wordCount > 0 ? " " : "") + word;
-    wordCount++;
-    if (wordCount >= 5) break;
-  }
-  return smartTitle.length < topic.length ? smartTitle + "..." : smartTitle;
 }
 
-// Initialize API key with validation (no change)
-function initializeApiKey() {
-  if (config.apiKey) {
-    const key =
-      "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";
-    if (key && key.trim()) {
-      config.apiKey = key.trim();
-      localStorage.setItem("openrouter_api_key", key.trim());
-    } else {
-      alert("API key is required to use AutoCreator.");
-      return false;
-    }
-  }
-  if (!config.apiKey.startsWith("sk-or-v1-")) {
-    console.warn(
-      "⚠️ API key format may be incorrect. OpenRouter keys should start with 'sk-or-v1-'"
-    );
-    const confirm = window.confirm(
-      "Your API key doesn't look like a valid OpenRouter key.\n\nDo you want to continue anyway?"
-    );
-    if (!confirm) {
-      localStorage.removeItem("openrouter_api_key");
-      config.apiKey = null;
-      return false;
-    }
-  }
-  return true;
+function saveToStorage(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
-// API call with retry logic (no change)
-async function generateAIResponseWithRetry(prompt, agentName) {
-  const startTime = Date.now();
-  if (!config.apiKey || config.apiKey.length < 10)
-    return "⚠️ Invalid API key. Please check your OpenRouter API key.";
-  for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
-    try {
-      state.metrics.totalRequests++;
-      const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${config.apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "AutoCreator Multi-Agent Studio",
-          },
-          body: JSON.stringify({
-            model: "openai/gpt-3.5-turbo",
-            messages: [{ role: "user", content: prompt }],
-          }),
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          `HTTP ${response.status}: ${
-            errorData.error?.message || response.statusText
-          }`
-        );
-      }
-      const data = await response.json();
-      if (!data.choices || !data.choices[0] || !data.choices[0].message)
-        throw new Error("Invalid response format from API");
-      let responseText = data.choices[0].message.content.trim();
-      const responseTime = Date.now() - startTime;
-      state.metrics.successfulRequests++;
-      state.metrics.averageResponseTime =
-        (state.metrics.averageResponseTime *
-          (state.metrics.successfulRequests - 1) +
-          responseTime) /
-        state.metrics.successfulRequests;
-      if (!state.metrics.agentPerformance[agentName]) {
-        state.metrics.agentPerformance[agentName] = {
-          requests: 0,
-          totalTime: 0,
-          successRate: 0,
-        };
-      }
-      const agentMetrics = state.metrics.agentPerformance[agentName];
-      agentMetrics.requests++;
-      agentMetrics.totalTime += responseTime;
-      agentMetrics.successRate =
-        (state.metrics.successfulRequests / state.metrics.totalRequests) * 100;
-      return responseText;
-    } catch (error) {
-      if (attempt === config.maxRetries)
-        return `⚠️ Failed after ${config.maxRetries} attempts: ${error.message}.`;
-      statusBar.textContent = `🔄 Retry ${attempt}/${config.maxRetries}... (${error.message})`;
-      await new Promise((resolve) =>
-        setTimeout(resolve, config.retryDelay * attempt)
-      );
-    }
-  }
+function getHistory() {
+  return getFromStorage(config.historyStorageKey, []);
+}
+
+function saveHistory(history) {
+  saveToStorage(config.historyStorageKey, history.slice(0, 50));
+}
+
+function setStatus(message) {
+  if (elements.statusBar) elements.statusBar.textContent = message;
 }
 
 function displayText(element, text) {
+  if (!element) return;
   element.textContent = text.trim();
   element.classList.remove("typing");
-}
-
-function revealElement(element) {
   element.classList.add("visible");
 }
 
-// Main generation function
-btn.addEventListener("click", async () => {
-  if (!initializeApiKey()) return;
-  const topic = inputTopic.value.trim();
-  if (!topic) return;
-  if (state.isGenerating) {
-    statusBar.textContent = "⏳ Please wait, agents are still working...";
-    return;
+function clearOutputs() {
+  [elements.textOutput, elements.writerOutput, elements.researchOutput].forEach(
+    (el) => {
+      if (!el) return;
+      el.textContent = "";
+      el.classList.remove("visible", "typing");
+    }
+  );
+}
+
+function clearMainView() {
+  if (elements.inputTopic) elements.inputTopic.value = "";
+  clearOutputs();
+  setStatus("Awaiting your topic...");
+  elements.navControls?.classList.add("hidden");
+}
+
+function getApiKey() {
+  const savedKey = localStorage.getItem(config.apiKeyStorageKey);
+
+  if (savedKey && savedKey.trim().startsWith("sk-or-v1-")) {
+    return savedKey.trim();
   }
 
-  state.isGenerating = true;
-  btn.disabled = true;
-  btn.textContent = "⏳";
-  navControls.classList.add("hidden");
+  const enteredKey = prompt("Please enter your OpenRouter API key:");
 
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  const currentThread = history.find((h) => h.id === state.currentThreadId);
-  const lastStep = currentThread
-    ? currentThread.steps[state.currentStepIndex]
-    : null;
-  const isFollowUp = isRelated(topic, lastStep ? lastStep.topic : null);
-  const template = templateSelect.value;
-
-  let threadId =
-    isFollowUp && currentThread ? currentThread.id : `thread-${Date.now()}`;
-
-  [textOutput, writerOutput, researchOutput].forEach((el) => {
-    el.textContent = "";
-    el.classList.remove("visible");
-  });
-
-  const prompts = agentPrompts[template];
-  try {
-    statusBar.textContent = "📄 Summary Agent analyzing...";
-    const summary = await generateAIResponseWithRetry(
-      prompts.summary(topic),
-      "summary"
-    );
-    displayText(textOutput, `📝 Summary:\n${summary}`);
-    revealElement(textOutput);
-
-    statusBar.textContent = "✍️ Writer Agent crafting content...";
-    const writer = await generateAIResponseWithRetry(
-      `${prompts.writer(topic)}\n\nContext: ${summary}`,
-      "writer"
-    );
-    displayText(writerOutput, `✍️ Writer Agent:\n${writer}`);
-    revealElement(writerOutput);
-
-    statusBar.textContent = "📊 Research Agent gathering insights...";
-    const research = await generateAIResponseWithRetry(
-      `${prompts.research(topic)}\n\nContext: ${summary}`,
-      "research"
-    );
-    displayText(researchOutput, `📊 Research Agent:\n${research}`);
-    revealElement(researchOutput);
-
-    const outputs = { summary, writer, research };
-    saveStepToHistory(threadId, topic, template, outputs);
-
-    const newHistory = JSON.parse(localStorage.getItem("history")) || [];
-    const newThread = newHistory.find((h) => h.id === threadId);
-    state.currentThreadId = threadId;
-    state.currentStepIndex = newThread.steps.length - 1;
-
-    statusBar.textContent = "✅ All agents completed successfully!";
-  } catch (err) {
-    statusBar.textContent = `❌ Something went wrong: ${err.message}`;
-  } finally {
-    state.isGenerating = false;
-    btn.disabled = false;
-    btn.textContent = "➤";
-    updateNavControls();
-    // This is the primary fix for the "saving" issue.
-    // Ensure the UI is updated with the new item.
-    updateHistoryUI();
-    addToggleToAgents();
+  if (!enteredKey || !enteredKey.trim()) {
+    alert("API key is required to use AutoCreator.");
+    return null;
   }
-});
+
+  const cleanKey = enteredKey.trim();
+
+  if (!cleanKey.startsWith("sk-or-v1-")) {
+    alert("That does not look like a valid OpenRouter API key.");
+    return null;
+  }
+
+  localStorage.setItem(config.apiKeyStorageKey, cleanKey);
+  return cleanKey;
+}
+
+function createSmartHistoryTitle(topic) {
+  const cleanTopic = topic.trim();
+  if (cleanTopic.length <= 40) return cleanTopic;
+
+  const words = cleanTopic.split(/\s+/).slice(0, 7).join(" ");
+  return words.length < cleanTopic.length ? `${words}...` : words;
+}
 
 function isRelated(newTopic, oldTopic) {
   if (!oldTopic) return false;
+
   const stopWords = new Set([
     "a",
     "an",
@@ -328,323 +204,487 @@ function isRelated(newTopic, oldTopic) {
     "write",
     "about",
   ]);
+
   const getWords = (text) =>
     new Set(
       text
         .toLowerCase()
         .split(/\s+/)
-        .filter((word) => !stopWords.has(word) && word.length > 2)
+        .map((word) => word.replace(/[^a-z0-9]/gi, ""))
+        .filter((word) => word.length > 2 && !stopWords.has(word))
     );
+
   const words1 = getWords(newTopic);
   const words2 = getWords(oldTopic);
-  if (words1.size === 0 || words2.size === 0) return false;
-  const intersection = new Set([...words1].filter((word) => words2.has(word)));
-  const overlap = intersection.size / Math.min(words1.size, words2.size);
-  return overlap > 0.3;
+
+  if (!words1.size || !words2.size) return false;
+
+  const matches = [...words1].filter((word) => words2.has(word));
+  return matches.length / Math.min(words1.size, words2.size) > 0.3;
+}
+
+async function callOpenRouter(promptText, agentName, apiKey) {
+  const startTime = Date.now();
+
+  for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
+    try {
+      state.metrics.totalRequests += 1;
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "AutoCreator Multi-Agent Studio",
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{ role: "user", content: promptText }],
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message = data?.error?.message || response.statusText;
+        throw new Error(`HTTP ${response.status}: ${message}`);
+      }
+
+      const output = data?.choices?.[0]?.message?.content;
+
+      if (!output) {
+        throw new Error("Invalid response format from OpenRouter.");
+      }
+
+      updateMetrics(agentName, Date.now() - startTime, true);
+      return output.trim();
+    } catch (error) {
+      if (attempt === config.maxRetries) {
+        updateMetrics(agentName, Date.now() - startTime, false);
+        throw error;
+      }
+
+      setStatus(`Retrying ${agentName} agent... Attempt ${attempt + 1}/${config.maxRetries}`);
+      await new Promise((resolve) =>
+        setTimeout(resolve, config.retryDelay * attempt)
+      );
+    }
+  }
+}
+
+function updateMetrics(agentName, responseTime, wasSuccessful) {
+  if (wasSuccessful) {
+    state.metrics.successfulRequests += 1;
+    state.metrics.averageResponseTime =
+      (state.metrics.averageResponseTime *
+        (state.metrics.successfulRequests - 1) +
+        responseTime) /
+      state.metrics.successfulRequests;
+  }
+
+  if (!state.metrics.agentPerformance[agentName]) {
+    state.metrics.agentPerformance[agentName] = {
+      requests: 0,
+      totalTime: 0,
+      successRate: 0,
+    };
+  }
+
+  const agent = state.metrics.agentPerformance[agentName];
+  agent.requests += 1;
+  agent.totalTime += responseTime;
+  agent.successRate = state.metrics.totalRequests
+    ? (state.metrics.successfulRequests / state.metrics.totalRequests) * 100
+    : 0;
 }
 
 function saveStepToHistory(threadId, topic, template, outputs) {
-  let history = JSON.parse(localStorage.getItem("history")) || [];
-  let thread = history.find((h) => h.id === threadId);
-  const newStep = { topic, outputs, time: new Date().toISOString() };
+  const history = getHistory();
+  let thread = history.find((item) => item.id === threadId);
+
+  const step = {
+    topic,
+    template,
+    outputs,
+    time: new Date().toISOString(),
+  };
 
   if (thread) {
-    thread.steps.push(newStep);
+    thread.steps.push(step);
   } else {
-    const newThread = {
+    thread = {
       id: threadId,
       title: createSmartHistoryTitle(topic),
       template,
       createdAt: new Date().toISOString(),
-      steps: [newStep],
+      steps: [step],
     };
-    history.unshift(newThread);
+    history.unshift(thread);
   }
-  history = history.slice(0, 50);
-  localStorage.setItem("history", JSON.stringify(history));
+
+  saveHistory(history);
 }
 
 function displayStep(threadId, stepIndex) {
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  const thread = history.find((h) => h.id === threadId);
+  const history = getHistory();
+  const thread = history.find((item) => item.id === threadId);
+
   if (!thread || !thread.steps[stepIndex]) return;
 
   const step = thread.steps[stepIndex];
+
   state.currentThreadId = threadId;
   state.currentStepIndex = stepIndex;
 
-  inputTopic.value = step.topic;
-  templateSelect.value = thread.template;
+  if (elements.inputTopic) elements.inputTopic.value = step.topic;
+  if (elements.templateSelect) elements.templateSelect.value = thread.template;
 
-  [textOutput, writerOutput, researchOutput].forEach((el) =>
-    el.classList.remove("visible")
-  );
+  clearOutputs();
 
-  setTimeout(() => {
-    displayText(textOutput, `📝 Summary:\n${step.outputs.summary}`);
-    revealElement(textOutput);
-    displayText(writerOutput, `✍️ Writer Agent:\n${step.outputs.writer}`);
-    revealElement(writerOutput);
-    displayText(researchOutput, `📊 Research Agent:\n${step.outputs.research}`);
-    revealElement(researchOutput);
-    addToggleToAgents();
-  }, 50);
+  displayText(elements.textOutput, `📝 Summary:\n${step.outputs.summary}`);
+  displayText(elements.writerOutput, `✍️ Writer Agent:\n${step.outputs.writer}`);
+  displayText(elements.researchOutput, `📊 Research Agent:\n${step.outputs.research}`);
 
-  statusBar.textContent = `Displaying step ${stepIndex + 1} of ${
-    thread.steps.length
-  } from a past conversation.`;
+  setStatus(`Displaying step ${stepIndex + 1} of ${thread.steps.length}.`);
   updateNavControls();
-  // Call updateHistoryUI to make sure the "active" class is set on the correct item.
   updateHistoryUI();
+  addToggleToAgents();
 }
 
 function loadThread(threadId, stepIndex = -1) {
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  const thread = history.find((h) => h.id === threadId);
+  const history = getHistory();
+  const thread = history.find((item) => item.id === threadId);
   if (!thread) return;
+
   const indexToLoad = stepIndex === -1 ? thread.steps.length - 1 : stepIndex;
   displayStep(threadId, indexToLoad);
 }
 
+function deleteThread(threadId) {
+  const history = getHistory().filter((item) => item.id !== threadId);
+  saveHistory(history);
+
+  if (state.currentThreadId === threadId) {
+    state.currentThreadId = null;
+    state.currentStepIndex = -1;
+    clearMainView();
+  }
+
+  updateHistoryUI();
+}
+
+function clearAllHistory() {
+  const confirmed = confirm("Are you sure you want to clear all history?");
+  if (!confirmed) return;
+
+  localStorage.removeItem(config.historyStorageKey);
+  state.currentThreadId = null;
+  state.currentStepIndex = -1;
+
+  clearMainView();
+  updateHistoryUI();
+}
+
+function searchHistory(query) {
+  const history = getHistory();
+  const cleanQuery = query.trim().toLowerCase();
+
+  if (!cleanQuery) return history;
+
+  return history.filter((thread) => {
+    const titleMatch = thread.title.toLowerCase().includes(cleanQuery);
+    const stepMatch = thread.steps.some((step) =>
+      step.topic.toLowerCase().includes(cleanQuery)
+    );
+    return titleMatch || stepMatch;
+  });
+}
+
 function updateHistoryUI(filteredHistory = null) {
-  const historyList = document.getElementById("historyList");
-  const template = document.getElementById("historyItemTemplate");
+  const historyList = elements.historyList;
+  const template = elements.historyItemTemplate;
+
   if (!historyList || !template) return;
 
+  const history = filteredHistory || getHistory();
   historyList.innerHTML = "";
-  const history =
-    filteredHistory || JSON.parse(localStorage.getItem("history")) || [];
 
   history.forEach((thread) => {
     const clone = template.content.cloneNode(true);
     const li = clone.querySelector(".history-item");
-    const timestamp = li.querySelector(".timestamp");
-    const topicText = li.querySelector(".topic-text");
-    const removeBtn = li.querySelector(".remove-btn");
+    const timestamp = clone.querySelector(".timestamp");
+    const topicText = clone.querySelector(".topic-text");
+    const removeBtn = clone.querySelector(".remove-btn");
 
-    const stepCount =
-      thread.steps.length > 1 ? ` (${thread.steps.length} steps)` : "";
-    timestamp.textContent = `${new Date(
-      thread.createdAt
-    ).toLocaleDateString()} • ${thread.template}`;
-    topicText.textContent = thread.title + stepCount;
-    topicText.title = thread.steps[0].topic;
+    const stepCount = thread.steps.length > 1 ? ` (${thread.steps.length} steps)` : "";
+
+    timestamp.textContent = `${new Date(thread.createdAt).toLocaleDateString()} • ${thread.template}`;
+    topicText.textContent = `${thread.title}${stepCount}`;
+    topicText.title = thread.steps[0]?.topic || thread.title;
 
     if (thread.id === state.currentThreadId) {
       li.classList.add("active-history");
     }
 
-    // Set up the click event for the history item itself.
     li.addEventListener("click", () => loadThread(thread.id));
 
-    // Set up the click event for the delete button.
-    removeBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); // Stop the event from bubbling up to the `li`
-      if (
-        confirm(
-          `Are you sure you want to delete the thread: "${thread.title}"?`
-        )
-      ) {
-        // This is the fix for the "deletion" issue.
-        // We now call a dedicated function to handle the deletion and UI refresh.
-        clearHistory(thread.id);
-      }
+    removeBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const confirmed = confirm(`Delete this thread: "${thread.title}"?`);
+      if (confirmed) deleteThread(thread.id);
     });
 
     historyList.appendChild(clone);
   });
 }
 
-// Fixed clearHistory function to ensure the UI is refreshed.
-function clearHistory(threadIdToRemove) {
-  let history = JSON.parse(localStorage.getItem("history")) || [];
-  history = history.filter((item) => item.id !== threadIdToRemove);
-  localStorage.setItem("history", JSON.stringify(history));
-
-  // If the deleted thread was the active one, clear the main view.
-  if (state.currentThreadId === threadIdToRemove) {
-    state.currentThreadId = null;
-    state.currentStepIndex = -1;
-    clearMainView();
-  }
-  // This is the critical line that was missing or being called incorrectly.
-  // It ensures the UI is updated immediately after deletion.
-  updateHistoryUI();
-}
-
-function clearAllHistory() {
-  if (confirm("Are you sure you want to clear all history?")) {
-    localStorage.removeItem("history");
-    state.currentThreadId = null;
-    state.currentStepIndex = -1;
-    clearMainView();
-    // This is correct, but it's good to keep it explicit for clarity.
-    updateHistoryUI();
-  }
-}
-
-function clearMainView() {
-  inputTopic.value = "";
-  [textOutput, writerOutput, researchOutput].forEach((el) => {
-    el.textContent = "";
-    el.classList.remove("visible");
-  });
-  statusBar.textContent = "Awaiting your topic...";
-  navControls.classList.add("hidden");
-  // This is a subtle change. We no longer call updateHistoryUI here, as clearAllHistory already does.
-}
-
 function updateNavControls() {
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  const thread = history.find((h) => h.id === state.currentThreadId);
+  const history = getHistory();
+  const thread = history.find((item) => item.id === state.currentThreadId);
 
   if (!thread || thread.steps.length <= 1) {
-    navControls.classList.add("hidden");
+    elements.navControls?.classList.add("hidden");
     return;
   }
-  navControls.classList.remove("hidden");
-  prevBtn.disabled = state.currentStepIndex === 0;
-  nextBtn.disabled = state.currentStepIndex === thread.steps.length - 1;
-  navCounter.textContent = `${state.currentStepIndex + 1} / ${
-    thread.steps.length
-  }`;
+
+  elements.navControls?.classList.remove("hidden");
+  elements.prevBtn.disabled = state.currentStepIndex <= 0;
+  elements.nextBtn.disabled = state.currentStepIndex >= thread.steps.length - 1;
+  elements.navCounter.textContent = `${state.currentStepIndex + 1} / ${thread.steps.length}`;
 }
 
-function searchHistory(query) {
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  if (!query) return history;
-  query = query.toLowerCase();
-  return history.filter(
-    (thread) =>
-      thread.title.toLowerCase().includes(query) ||
-      thread.steps.some((step) => step.topic.toLowerCase().includes(query))
-  );
+async function handleGenerate() {
+  if (state.isGenerating) {
+    setStatus("⏳ Please wait, agents are still working...");
+    return;
+  }
+
+  const apiKey = getApiKey();
+  if (!apiKey) return;
+
+  const topic = elements.inputTopic?.value.trim();
+  if (!topic) {
+    setStatus("Please enter a topic first.");
+    return;
+  }
+
+  const templateName = elements.templateSelect?.value || state.currentTemplate;
+  const prompts = agentPrompts[templateName] || agentPrompts.general;
+
+  const history = getHistory();
+  const currentThread = history.find((item) => item.id === state.currentThreadId);
+  const lastStep = currentThread?.steps?.[state.currentStepIndex] || null;
+  const followUp = isRelated(topic, lastStep?.topic || null);
+  const threadId = followUp && currentThread ? currentThread.id : `thread-${Date.now()}`;
+
+  try {
+    state.isGenerating = true;
+    elements.btn.disabled = true;
+    elements.btn.textContent = "⏳";
+    elements.navControls?.classList.add("hidden");
+    clearOutputs();
+
+    setStatus("📄 Summary Agent analyzing...");
+    const summary = await callOpenRouter(prompts.summary(topic), "summary", apiKey);
+    displayText(elements.textOutput, `📝 Summary:\n${summary}`);
+
+    setStatus("✍️ Writer Agent crafting content...");
+    const writer = await callOpenRouter(
+      `${prompts.writer(topic)}\n\nContext from Summary Agent:\n${summary}`,
+      "writer",
+      apiKey
+    );
+    displayText(elements.writerOutput, `✍️ Writer Agent:\n${writer}`);
+
+    setStatus("📊 Research Agent gathering insights...");
+    const research = await callOpenRouter(
+      `${prompts.research(topic)}\n\nContext from Summary Agent:\n${summary}`,
+      "research",
+      apiKey
+    );
+    displayText(elements.researchOutput, `📊 Research Agent:\n${research}`);
+
+    saveStepToHistory(threadId, topic, templateName, {
+      summary,
+      writer,
+      research,
+    });
+
+    const updatedThread = getHistory().find((item) => item.id === threadId);
+    state.currentThreadId = threadId;
+    state.currentStepIndex = updatedThread.steps.length - 1;
+
+    setStatus("✅ All agents completed successfully!");
+  } catch (error) {
+    setStatus(`❌ Something went wrong: ${error.message}`);
+  } finally {
+    state.isGenerating = false;
+    elements.btn.disabled = false;
+    elements.btn.textContent = "➤";
+    updateNavControls();
+    updateHistoryUI();
+    addToggleToAgents();
+    saveToStorage(config.metricsStorageKey, state.metrics);
+  }
 }
 
 function exportContent() {
   if (!state.currentThreadId) {
-    alert("Please select a conversation from the history to export.");
+    alert("Please select a conversation from history first.");
     return;
   }
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  const thread = history.find((h) => h.id === state.currentThreadId);
+
+  const thread = getHistory().find((item) => item.id === state.currentThreadId);
+
   if (!thread) {
-    alert("Could not find the selected conversation to export.");
+    alert("Could not find the selected conversation.");
     return;
   }
-  const content = { ...thread, metrics: state.metrics };
-  const blob = new Blob([JSON.stringify(content, null, 2)], {
-    type: "application/json",
-  });
+
+  const safeTitle = thread.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const blob = new Blob(
+    [JSON.stringify({ ...thread, metrics: state.metrics }, null, 2)],
+    { type: "application/json" }
+  );
+
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `autocreator-thread-${thread.title
-    .replace(/\s+/g, "-")
-    .toLowerCase()}.json`;
-  a.click();
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `autocreator-${safeTitle}.json`;
+  link.click();
   URL.revokeObjectURL(url);
 }
 
 function toggleTheme() {
   document.body.classList.toggle("light-theme");
+
   const theme = document.body.classList.contains("light-theme")
     ? "light"
     : "dark";
-  localStorage.setItem("theme", theme);
-  document.querySelector(".theme-toggle").textContent =
-    theme === "light" ? "☀️" : "🌙";
-}
 
-function toggleMetrics() {
-  const metricsEl = document.getElementById("performanceMetrics");
-  if (metricsEl.classList.contains("visible")) {
-    metricsEl.classList.remove("visible");
-  } else {
-    updateMetricsDisplay();
-    metricsEl.classList.add("visible");
+  localStorage.setItem(config.themeStorageKey, theme);
+
+  if (elements.themeToggle) {
+    elements.themeToggle.textContent = theme === "light" ? "☀️" : "🌙";
   }
 }
 
 function updateMetricsDisplay() {
-  const metricsContent = document.getElementById("metricsContent");
-  const m = state.metrics;
-  metricsContent.innerHTML = `<p><strong>Total Requests:</strong> ${
-    m.totalRequests
-  }</p>
-       <p><strong>Success Rate:</strong> ${
-         m.totalRequests > 0
-           ? ((m.successfulRequests / m.totalRequests) * 100).toFixed(1)
-           : 0
-       }%</p>
-       <p><strong>Avg Response Time:</strong> ${m.averageResponseTime.toFixed(
-         0
-       )}ms</p>`;
+  if (!elements.metricsContent) return;
+
+  const total = state.metrics.totalRequests;
+  const successRate = total
+    ? ((state.metrics.successfulRequests / total) * 100).toFixed(1)
+    : 0;
+
+  elements.metricsContent.innerHTML = `
+    <p><strong>Total Requests:</strong> ${total}</p>
+    <p><strong>Success Rate:</strong> ${successRate}%</p>
+    <p><strong>Avg Response Time:</strong> ${state.metrics.averageResponseTime.toFixed(0)}ms</p>
+  `;
+}
+
+function toggleMetrics() {
+  if (!elements.metricsPanel) return;
+
+  if (elements.metricsPanel.classList.contains("visible")) {
+    elements.metricsPanel.classList.remove("visible");
+  } else {
+    updateMetricsDisplay();
+    elements.metricsPanel.classList.add("visible");
+  }
 }
 
 function addToggleToAgents() {
   const agentMessages = document.querySelectorAll(".agent-message.bot");
-  agentMessages.forEach((msg) => {
-    if (!msg.querySelector(".toggle-arrow")) {
-      const toggle = document.createElement("div");
-      toggle.className = "toggle-arrow";
-      toggle.textContent = "⯆";
-      toggle.addEventListener("click", () => {
-        msg.classList.toggle("collapsed");
-        toggle.textContent = msg.classList.contains("collapsed") ? "⯈" : "⯆";
-      });
-      msg.appendChild(toggle);
+
+  agentMessages.forEach((message) => {
+    if (message.querySelector(".toggle-arrow")) return;
+
+    const toggle = document.createElement("button");
+    toggle.className = "toggle-arrow";
+    toggle.type = "button";
+    toggle.textContent = "⯆";
+    toggle.setAttribute("aria-label", "Toggle agent message");
+
+    toggle.addEventListener("click", () => {
+      message.classList.toggle("collapsed");
+      toggle.textContent = message.classList.contains("collapsed") ? "⯈" : "⯆";
+    });
+
+    message.appendChild(toggle);
+  });
+}
+
+function setupEventListeners() {
+  elements.btn?.addEventListener("click", handleGenerate);
+
+  elements.historySearch?.addEventListener("input", (event) => {
+    updateHistoryUI(searchHistory(event.target.value));
+  });
+
+  elements.templateSelect?.addEventListener("change", (event) => {
+    state.currentTemplate = event.target.value;
+  });
+
+  elements.prevBtn?.addEventListener("click", () => {
+    if (state.currentStepIndex > 0) {
+      loadThread(state.currentThreadId, state.currentStepIndex - 1);
+    }
+  });
+
+  elements.nextBtn?.addEventListener("click", () => {
+    const thread = getHistory().find((item) => item.id === state.currentThreadId);
+    if (thread && state.currentStepIndex < thread.steps.length - 1) {
+      loadThread(state.currentThreadId, state.currentStepIndex + 1);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.ctrlKey && event.key === "Enter") {
+      event.preventDefault();
+      handleGenerate();
+    }
+
+    if (event.ctrlKey && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      exportContent();
+    }
+
+    if (event.ctrlKey && event.key.toLowerCase() === "d") {
+      event.preventDefault();
+      toggleTheme();
     }
   });
 }
 
-// Event listeners
-historySearch.addEventListener("input", (e) =>
-  updateHistoryUI(searchHistory(e.target.value))
-);
-templateSelect.addEventListener(
-  "change",
-  (e) => (state.currentTemplate = e.target.value)
-);
-prevBtn.addEventListener("click", () => {
-  if (state.currentStepIndex > 0)
-    loadThread(state.currentThreadId, state.currentStepIndex - 1);
-});
-nextBtn.addEventListener("click", () => {
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  const thread = history.find((h) => h.id === state.currentThreadId);
-  if (thread && state.currentStepIndex < thread.steps.length - 1)
-    loadThread(state.currentThreadId, state.currentStepIndex + 1);
-});
+function initializeApp() {
+  const savedMetrics = getFromStorage(config.metricsStorageKey, null);
+  if (savedMetrics) {
+    state.metrics = { ...state.metrics, ...savedMetrics };
+  }
 
-document.addEventListener("keydown", (e) => {
-  if (e.ctrlKey && e.key === "Enter") {
-    e.preventDefault();
-    btn.click();
-  }
-  if (e.ctrlKey && e.key === "s") {
-    e.preventDefault();
-    exportContent();
-  }
-  if (e.ctrlKey && e.key === "d") {
-    e.preventDefault();
-    toggleTheme();
-  }
-});
-
-window.addEventListener("DOMContentLoaded", () => {
-  updateHistoryUI();
-  if (localStorage.getItem("theme") === "light") {
+  const savedTheme = localStorage.getItem(config.themeStorageKey);
+  if (savedTheme === "light") {
     document.body.classList.add("light-theme");
-    document.querySelector(".theme-toggle").textContent = "☀️";
+    if (elements.themeToggle) elements.themeToggle.textContent = "☀️";
   }
-  const savedMetrics = localStorage.getItem("autocreator_metrics");
-  if (savedMetrics)
-    state.metrics = { ...state.metrics, ...JSON.parse(savedMetrics) };
-});
 
-setInterval(
-  () =>
-    localStorage.setItem("autocreator_metrics", JSON.stringify(state.metrics)),
-  30000
-);
+  updateHistoryUI();
+  updateNavControls();
+  setupEventListeners();
+  setStatus("Awaiting your topic...");
+}
+
+window.addEventListener("DOMContentLoaded", initializeApp);
+
+setInterval(() => {
+  saveToStorage(config.metricsStorageKey, state.metrics);
+}, 30000);
+
+// Optional: expose these if your HTML buttons use onclick="..."
+window.clearAllHistory = clearAllHistory;
+window.exportContent = exportContent;
+window.toggleTheme = toggleTheme;
+window.toggleMetrics = toggleMetrics;
