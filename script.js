@@ -1,11 +1,4 @@
-/*
-  AutoCreator Multi-Agent Studio - Rebuilt JS
-  -------------------------------------------------
-  IMPORTANT:
-  - Do NOT hardcode your real OpenRouter API key in frontend code.
-  - For learning/testing, this script can read the key from localStorage.
-  - For production, call your own backend instead of OpenRouter directly.
-*/
+
 
 const config = {
   apiKeyStorageKey: "openrouter_api_key",
