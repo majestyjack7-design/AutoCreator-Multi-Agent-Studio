@@ -144,12 +144,12 @@ function getApiKey() {
     return savedKey.trim();
   }
 
-  const enteredKey = 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
+  const enteredKey = prompt("API KEY IS NEEDED")
 
-  // if (!enteredKey || !enteredKey.trim()) {
-  //   alert("API key is required to use AutoCreator.");
-  //   return null;
-  // }
+  if (!enteredKey || !enteredKey.trim()) {
+    alert("API key is required to use AutoCreator.");
+    return null;
+  }
 
   const cleanKey = enteredKey.trim();
 
