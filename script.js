@@ -1,4 +1,11 @@
-
+/*
+  AutoCreator Multi-Agent Studio - Rebuilt JS
+  -------------------------------------------------
+  IMPORTANT:
+  - Do NOT hardcode your real OpenRouter API key in frontend code.
+  - For learning/testing, this script can read the key from localStorage.
+  - For production, call your own backend instead of OpenRouter directly.
+*/
 
 const config = {
   apiKeyStorageKey: "openrouter_api_key",
@@ -23,25 +30,27 @@ const state = {
   },
 };
 
-const elements = {
-  btn: document.querySelector("#generateBtn"),
-  inputTopic: document.querySelector("#topicInput"),
-  statusBar: document.querySelector("#status"),
-  textOutput: document.querySelector("#textOutput"),
-  writerOutput: document.querySelector("#writerOutput"),
-  researchOutput: document.querySelector("#researchOutput"),
-  templateSelect: document.querySelector("#templateSelect"),
-  historySearch: document.querySelector("#historySearch"),
-  navControls: document.querySelector("#navControls"),
-  prevBtn: document.querySelector("#prevBtn"),
-  nextBtn: document.querySelector("#nextBtn"),
-  navCounter: document.querySelector("#navCounter"),
-  historyList: document.querySelector("#historyList"),
-  historyItemTemplate: document.querySelector("#historyItemTemplate"),
-  metricsPanel: document.querySelector("#performanceMetrics"),
-  metricsContent: document.querySelector("#metricsContent"),
-  themeToggle: document.querySelector(".theme-toggle"),
-};
+const elements = {};
+
+function cacheElements() {
+  elements.btn = document.querySelector("#generateBtn");
+  elements.inputTopic = document.querySelector("#topicInput");
+  elements.statusBar = document.querySelector("#status");
+  elements.textOutput = document.querySelector("#textOutput");
+  elements.writerOutput = document.querySelector("#writerOutput");
+  elements.researchOutput = document.querySelector("#researchOutput");
+  elements.templateSelect = document.querySelector("#templateSelect");
+  elements.historySearch = document.querySelector("#historySearch");
+  elements.navControls = document.querySelector("#navControls");
+  elements.prevBtn = document.querySelector("#prevBtn");
+  elements.nextBtn = document.querySelector("#nextBtn");
+  elements.navCounter = document.querySelector("#navCounter");
+  elements.historyList = document.querySelector("#historyList");
+  elements.historyItemTemplate = document.querySelector("#historyItemTemplate");
+  elements.metricsPanel = document.querySelector("#performanceMetrics");
+  elements.metricsContent = document.querySelector("#metricsContent");
+  elements.themeToggle = document.querySelector(".theme-toggle");
+}
 
 const agentPrompts = {
   general: {
@@ -653,6 +662,13 @@ function setupEventListeners() {
 }
 
 function initializeApp() {
+  cacheElements();
+
+  if (!elements.btn || !elements.inputTopic) {
+    console.error("AutoCreator error: Required HTML elements were not found. Check that your IDs match the JavaScript: #generateBtn and #topicInput.");
+    return;
+  }
+
   const savedMetrics = getFromStorage(config.metricsStorageKey, null);
   if (savedMetrics) {
     state.metrics = { ...state.metrics, ...savedMetrics };
