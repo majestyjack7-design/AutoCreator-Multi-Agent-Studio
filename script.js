@@ -6,7 +6,7 @@
   Do not use this method for a live/public website.
 */
 
-const DEV_OPENROUTER_API_KEY = "PASTE_YOUR_OPENROUTER_API_KEY_HERE";
+const DEV_OPENROUTER_API_KEY = "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";
 
 const config = {
   apiKeyStorageKey: "openrouter_api_key",
